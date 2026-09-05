@@ -21,6 +21,7 @@ function loadEnv(file) {
 
 const E = loadEnv(path.join(__dirname, '.env'));
 const g = (k, d = '') => (E[k] != null && E[k] !== '' ? E[k] : (process.env[k] || d));
+const resolvePath = (p) => (path.isAbsolute(p) ? p : path.join(__dirname, p));
 
 if (!g('NAME') || !g('EMAIL')) {
   console.warn('[config] .env missing or empty — copy .env.example to .env and fill it in.');
@@ -60,5 +61,7 @@ const CV = {
 const CREDS = { email: g('GOOGLE_EMAIL') || g('EMAIL'), password: g('GOOGLE_PASSWORD') };
 const geminiKey = g('GEMINI_KEY');
 const naukriProfileUrl = g('NAUKRI_PROFILE_URL', 'https://www.naukri.com/mnjuser/profile');
+const resumeAPath = resolvePath(g('RESUME_A_PATH', 'resume-a.pdf'));
+const resumeBPath = resolvePath(g('RESUME_B_PATH', 'resume-b.pdf'));
 
-module.exports = { CV, CREDS, geminiKey, naukriProfileUrl };
+module.exports = { CV, CREDS, geminiKey, naukriProfileUrl, resumeAPath, resumeBPath };

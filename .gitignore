@@ -5,6 +5,7 @@
 *.log
 applications*.csv
 apply-state-*.json
+.naukri-resume-state.json
 *.png
 
 # saved browser sessions (contain logged-in cookies)

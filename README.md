@@ -1,12 +1,13 @@
 # Naukri Profile Refresh
 
 Keeps your Naukri profile "recently updated" — recruiters see fresh profiles first.
-Every run it toggles a trailing `.` on your **resume headline**, which counts as a
-profile update on Naukri. Schedule it hourly and forget about it.
+Every run it toggles a trailing `.` on your **resume headline** and re-uploads your
+**resume**, alternating between two PDFs, both of which count as profile updates on
+Naukri. Schedule it hourly and forget about it.
 
 - Logs in automatically with your **Google account** (session is saved after the first login).
 - Runs in an off-screen Chrome window (Naukri blocks headless browsers).
-- Verifies the save actually stuck on the server before reporting success.
+- Verifies the headline save and the resume upload actually stuck on the server before reporting success.
 - All personal data lives in `.env` — nothing sensitive is in the code.
 
 ## Requirements
@@ -39,8 +40,14 @@ Open `.env` and fill in at least:
 | `GOOGLE_EMAIL` | The Google account your Naukri profile uses |
 | `GOOGLE_PASSWORD` | Its password (used only for the automated sign-in) |
 | `NAUKRI_PROFILE_URL` | Your Naukri profile page — the default `https://www.naukri.com/mnjuser/profile` works for every account |
+| `RESUME_A_PATH` / `RESUME_B_PATH` | Your two resume PDFs, alternated on every hourly run |
 
 `.env` is git-ignored, so your credentials never get pushed.
+
+**Drop your two resume PDFs in the repo folder** as `resume-a.pdf` and `resume-b.pdf`
+(or point `RESUME_A_PATH`/`RESUME_B_PATH` at different files/locations). Every run
+uploads whichever one wasn't uploaded last time, tracked in `.naukri-resume-state.json`.
+`*.pdf` is git-ignored, so the resumes themselves never get pushed.
 
 **3. First login (one time, visible browser):**
 
@@ -62,6 +69,7 @@ Check `naukri-refresh.log` — you should see a line like:
 
 ```
 [27/7/2026, 1:05:12 pm] OK: headline dot added (verified) → "AI Full Stack Developer | ..."
+[27/7/2026, 1:05:12 pm] OK: resume A uploaded (verified, same-day, date text unchanged as expected) → "resume-a.pdf", profile shows "Uploaded on: 27 Jul'26"
 ```
 
 ## Run it hourly (Task Scheduler)
@@ -93,6 +101,8 @@ Unregister-ScheduledTask NaukriProfileRefresh     # remove
 |---|---|
 | `Google login did not complete` in the log | Run `node naukri-profile-refresh.js login` and approve the 2-step verification prompt once manually. |
 | `save did not stick` in the log | Naukri changed its headline editor — open an issue. |
+| `resume upload did not stick` / `resume upload rejected by Naukri` in the log | Naukri changed its resume-upload control, or the PDF was rejected (size/format) — check the error screenshot. |
+| `resume file missing` in the log | `RESUME_A_PATH`/`RESUME_B_PATH` points at a file that isn't there — check `.env`. |
 | Any other error | Check `naukri-refresh-error-*.png` screenshots in the repo folder — they show exactly what the browser saw when it failed. |
 | Want to start fresh | Delete the `.naukri-chrome-profile/` folder and run the `login` step again. |
 
@@ -103,10 +113,14 @@ Unregister-ScheduledTask NaukriProfileRefresh     # remove
 | `naukri-profile-refresh.js` | The refresh script |
 | `config.js` | Loads `.env` (no dependencies) |
 | `.env.example` | Template — copy to `.env` and fill in |
+| `resume-a.pdf` / `resume-b.pdf` | Your two resumes, alternated each run (git-ignored) |
 | `naukri-refresh.log` | Run history (git-ignored) |
 | `.naukri-chrome-profile/` | Saved Chrome session (git-ignored) |
+| `.naukri-resume-state.json` | Tracks which resume was uploaded last (git-ignored) |
 
 ## Disclaimer
 
-Automating your own profile may be against Naukri's Terms of Service. It only
-edits your own headline at a slow, human-like rate, but use at your own risk.
+Automating your own profile may be against Naukri's Terms of Service. It edits
+your own headline and re-uploads your own resume at a slow, human-like (hourly)
+rate, but use at your own risk — frequent resume re-uploads are a stronger
+signal than the headline tweak, so this may draw more scrutiny.
