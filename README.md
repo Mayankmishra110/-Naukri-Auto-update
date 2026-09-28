@@ -78,12 +78,13 @@ Run this once in PowerShell (adjust the path to where you cloned the repo):
 
 ```powershell
 $repo = "C:\path\to\auto-apply"
-$action  = New-ScheduledTaskAction -Execute "node.exe" -Argument "`"$repo\naukri-profile-refresh.js`"" -WorkingDirectory $repo
+$action  = New-ScheduledTaskAction -Execute "wscript.exe" -Argument "`"$repo\run-hidden.vbs`"" -WorkingDirectory $repo
 $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Hours 1)
 Register-ScheduledTask -TaskName "NaukriProfileRefresh" -Action $action -Trigger $trigger -Settings (New-ScheduledTaskSettingsSet -StartWhenAvailable)
 ```
 
 That's it — the script now refreshes your profile every hour while your PC is on.
+`run-hidden.vbs` launches it without a console window, so scheduled runs never steal focus from what you're doing.
 
 Useful commands:
 

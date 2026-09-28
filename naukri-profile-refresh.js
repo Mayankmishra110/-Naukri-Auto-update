@@ -169,7 +169,29 @@ function headlineTextarea(page) {
   return page.locator('#resumeHeadline, #resumeHeadlineTxt, textarea.ge__text-area').first();
 }
 
+async function dismissSurveyPopup(page) {
+  const popup = page.getByText(/how likely are you to recommend/i).first();
+  if (!(await popup.isVisible().catch(() => false))) return;
+
+  log('survey popup detected — dismissing before editing headline');
+
+  const closeBtn = page.locator(
+    '[role="dialog"] button, [role="dialog"] [aria-label*="close" i], .modal [aria-label*="close" i], .modal button.close, [class*="close"][class*="icon"]'
+  ).first();
+  await closeBtn.click({ timeout: 3000 }).catch(() => {});
+
+  if (await popup.isVisible().catch(() => false)) {
+    await page.keyboard.press('Escape').catch(() => {});
+  }
+  if (await popup.isVisible().catch(() => false)) {
+    await page.mouse.click(10, 10).catch(() => {});
+  }
+  await popup.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
+}
+
 async function openHeadlineEditor(page) {
+  await dismissSurveyPopup(page);
+
   const icon = editIcon(page);
   await icon.waitFor({ state: 'visible', timeout: EDIT_TIMEOUT });
   await icon.scrollIntoViewIfNeeded().catch(() => {});
@@ -177,6 +199,7 @@ async function openHeadlineEditor(page) {
 
   const box = headlineTextarea(page);
   for (let i = 1; i <= 3; i++) {
+    await dismissSurveyPopup(page);
     await icon.click({ timeout: 10000 }).catch(() => {});
     try {
       await box.waitFor({ state: 'visible', timeout: TEXTAREA_TIMEOUT });
