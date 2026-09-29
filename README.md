@@ -3,7 +3,8 @@
 Keeps your Naukri profile "recently updated" — recruiters see fresh profiles first.
 Every run it toggles a trailing `.` on your **resume headline** and re-uploads your
 **resume**, alternating between two PDFs, both of which count as profile updates on
-Naukri. Schedule it hourly and forget about it.
+Naukri. Run it in the cloud on GitHub Actions (3 jittered runs a day, laptop can be off),
+or locally via Windows Task Scheduler.
 
 - Logs in automatically with your **Google account** (session is saved after the first login).
 - Runs in an off-screen Chrome window (Naukri blocks headless browsers).
@@ -112,6 +113,44 @@ The laptop's logged-in session and both resumes are shipped to CI **encrypted** 
 
 When a run fails with `session expired` (or you change a resume), repeat step 1 and push — the passphrase stays the same.
 
+### Checking that it ran (and worked)
+
+Repo → **Actions** tab → **Naukri profile refresh**. Every run is one row:
+
+| You see | Meaning |
+|---|---|
+| ✅ green row | Profile updated — headline + resume both verified on Naukri's server |
+| ❌ red row | Run failed — GitHub also emails you |
+| No row near a slot | Scheduler didn't fire (GitHub's cron is best-effort; rare) |
+
+Click a run to see, at the top of the page (the **run summary**):
+
+```
+Slot 08:00 IST, offset -412s → update planned at 07:53:08 IST (waiting 1504s)
+### Naukri refresh — success — 30 Sep 2026, 07:54 IST
+[30/9/2026, 7:53:21 am] OK: headline dot added (verified) → "SDE | React.js | ..."
+[30/9/2026, 7:54:07 am] OK: resume A uploaded (verified, ...) → "resume-a.pdf", profile shows "Uploaded on Sep 30, 2026"
+```
+
+For step-by-step output, click the **refresh** job → expand any step (the *Refresh profile* step has the full script output).
+
+### When a run fails
+
+1. Read the `ERROR:` line in the run summary.
+   - `session expired` → `npm run export-session`, commit + push `ci-secrets/*.enc`.
+   - `CI_SECRETS_PASSPHRASE is not set` / `unable to authenticate data` → the repo secret is missing or wrong; re-copy `.ci-passphrase`.
+   - Timeouts on the headline editor → Naukri changed its page (or a new popup); check the screenshots.
+2. Screenshots: the failed run's **Artifacts** section has `naukri-refresh-debug` (kept 7 days).
+   The screenshots are **encrypted** (public repo — artifacts are downloadable by anyone), so unzip it
+   into a folder and run `node ci/crypto.js decrypt <that-folder>` in this repo to get the `.png` files.
+
+### What's public and what isn't
+
+The repo, Actions logs and artifacts are public. Nothing personal is readable there:
+the session cookies, both resumes and failure screenshots are AES-256-GCM encrypted (`*.enc`),
+and the passphrase exists only in `.ci-passphrase` (git-ignored, on the laptop) and in GitHub's encrypted secrets.
+`.env`, `*.pdf`, `.naukri-chrome-profile/` and plaintext `ci-secrets/*` are git-ignored.
+
 ## Troubleshooting
 
 | Symptom | Fix |
@@ -134,6 +173,12 @@ When a run fails with `session expired` (or you change a resume), repeat step 1 
 | `naukri-refresh.log` | Run history (git-ignored) |
 | `.naukri-chrome-profile/` | Saved Chrome session (git-ignored) |
 | `.naukri-resume-state.json` | Tracks which resume was uploaded last (git-ignored) |
+| `run-hidden.vbs` | Launches the local scheduled run without a console window |
+| `.github/workflows/naukri-refresh.yml` | GitHub Actions schedule (08:00 / 09:18 / 14:00 IST ± 15 min) |
+| `ci/export-session.js` | `npm run export-session` — exports the laptop session + resumes, encrypted, for CI |
+| `ci/crypto.js` | AES-256-GCM encrypt/decrypt for `ci-secrets/` and failure screenshots |
+| `ci-secrets/*.enc` | Encrypted session + resumes used by CI (the only committed secrets — unreadable without the passphrase) |
+| `.ci-passphrase` | The passphrase (git-ignored; also stored as the `CI_SECRETS_PASSPHRASE` repo secret) |
 
 ## Disclaimer
 

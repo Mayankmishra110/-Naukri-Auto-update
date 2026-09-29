@@ -30,7 +30,9 @@ jobs:
           now=$(( 10#$(date -u +%H) * 3600 + 10#$(date -u +%M) * 60 + 10#$(date -u +%S) ))
           wait=$(( slot + offset - now ))
           (( wait < 0 )) && wait=0
-          echo "slot $(date -u -d @$slot +%H:%M) UTC, offset ${offset}s, sleeping ${wait}s"
+          msg="Slot $(date -u -d @$(( slot + 19800 )) +%H:%M) IST, offset ${offset}s → update planned at $(date -u -d @$(( now + wait + 19800 )) +%H:%M:%S) IST (waiting ${wait}s)"
+          echo "$msg"
+          echo "$msg" >> "$GITHUB_STEP_SUMMARY"
           sleep "$wait"
 
       - uses: actions/checkout@v4
@@ -56,12 +58,31 @@ jobs:
           export RESUME_LABEL=$([ $(( GITHUB_RUN_NUMBER % 2 )) -eq 0 ] && echo A || echo B)
           xvfb-run -a node naukri-profile-refresh.js
 
-      - name: Upload log and screenshots on failure
+      - name: Run summary
+        if: always()
+        run: |
+          {
+            echo "### Naukri refresh — ${{ job.status }} — $(TZ=Asia/Kolkata date '+%d %b %Y, %H:%M IST')"
+            echo '```'
+            cat naukri-refresh.log 2>/dev/null || echo "no log — failed before the refresh script ran (see step logs)"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Screenshots show the profile page, and artifacts on a public repo are downloadable by anyone,
+      # so they are encrypted with the same passphrase before upload.
+      - name: Encrypt failure screenshots
+        if: failure()
+        env:
+          CI_SECRETS_PASSPHRASE: ${{ secrets.CI_SECRETS_PASSPHRASE }}
+        run: node ci/crypto.js encrypt naukri-refresh-error-*.png
+
+      - name: Upload log and encrypted screenshots
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: naukri-refresh-debug
           path: |
             naukri-refresh.log
-            naukri-refresh-error-*.png
-          retention-days: 3
+            naukri-refresh-error-*.png.enc
+          if-no-files-found: ignore
+          retention-days: 7
