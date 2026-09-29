@@ -57,8 +57,9 @@ if (require.main === module) {
   if (cmd === 'decrypt') {
     decryptDir(args[0] || SECRETS_DIR, passphrase());
   } else if (cmd === 'encrypt') {
-    const pass = passphrase();
-    for (const f of args.filter((f) => fs.existsSync(f))) {
+    const files = args.filter((f) => fs.existsSync(f));
+    const pass = files.length ? passphrase() : '';
+    for (const f of files) {
       encryptFile(f, `${f}.enc`, pass);
       console.log(`encrypted ${f}`);
     }
