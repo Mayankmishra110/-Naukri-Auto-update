@@ -24,6 +24,8 @@ const LOG_FILE = path.join(__dirname, 'naukri-refresh.log');
 const ERROR_SHOT = path.join(__dirname, 'naukri-refresh-error.png');
 const RESUME_STATE_FILE = path.join(__dirname, '.naukri-resume-state.json');
 const LOGIN_MODE = process.argv[2] === 'login';
+// CI (GitHub Actions) has no persistent Chrome profile: it loads the session exported by ci/export-session.js
+const STORAGE_STATE = process.env.NAUKRI_STORAGE_STATE;
 
 const MAX_ATTEMPTS = 3;
 const GOTO_TIMEOUT = 90000;
@@ -117,6 +119,7 @@ function resumePathFor(label) {
 }
 
 function nextResumeLabel() {
+  if (process.env.RESUME_LABEL) return process.env.RESUME_LABEL;
   let last = 'B'; // so the very first run (no state file yet) uploads A
   try {
     last = JSON.parse(fs.readFileSync(RESUME_STATE_FILE, 'utf8')).last || 'B';
@@ -216,6 +219,9 @@ async function openHeadlineEditor(page) {
 async function ensureProfile(page, ctx) {
   await gotoRetry(page, PROFILE_URL);
   if (!onProfile(new URL(page.url()))) {
+    if (STORAGE_STATE) {
+      throw new Error('session expired — on the laptop run "npm run export-session", then commit and push ci-secrets/');
+    }
     page = await googleLogin(ctx, page);
   }
   if (!/\/mnjuser\/profile/.test(page.url())) {
@@ -258,15 +264,25 @@ async function refreshOnce(page, ctx) {
 }
 
 (async () => {
-  const ctx = await chromium.launchPersistentContext(PROFILE_DIR, {
+  const launchOptions = {
     channel: 'chrome',
     headless: false, // naukri's Akamai bot-check blocks headless; off-screen headed instead
-    viewport: { width: 1280, height: 850 },
     args: [
       '--disable-blink-features=AutomationControlled',
       ...(LOGIN_MODE ? [] : ['--window-position=-32000,-32000']),
     ],
-  });
+  };
+  const viewport = { width: 1280, height: 850 };
+  let ctx;
+  let closeBrowser;
+  if (STORAGE_STATE) {
+    const browser = await chromium.launch(launchOptions);
+    ctx = await browser.newContext({ storageState: STORAGE_STATE, viewport });
+    closeBrowser = () => browser.close();
+  } else {
+    ctx = await chromium.launchPersistentContext(PROFILE_DIR, { ...launchOptions, viewport });
+    closeBrowser = () => ctx.close();
+  }
   let page = ctx.pages()[0] || (await ctx.newPage());
   let lastErr;
 
@@ -292,6 +308,6 @@ async function refreshOnce(page, ctx) {
       process.exitCode = 1;
     }
   } finally {
-    await ctx.close();
+    await closeBrowser();
   }
 })();

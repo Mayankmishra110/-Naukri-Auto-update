@@ -96,6 +96,22 @@ Enable-ScheduledTask NaukriProfileRefresh         # resume
 Unregister-ScheduledTask NaukriProfileRefresh     # remove
 ```
 
+## Run it in the cloud (GitHub Actions — laptop can be off)
+
+`.github/workflows/naukri-refresh.yml` runs the refresh on GitHub's servers daily at
+**08:00, 09:18 and 14:00 IST**, each at a random moment within ±15 min of the slot so the
+update times never form an exact pattern. Free on public repos.
+
+The laptop's logged-in session and both resumes are shipped to CI **encrypted** in `ci-secrets/*.enc`
+(AES-256-GCM); only the passphrase lives in GitHub secrets.
+
+1. `npm run export-session` — exports the session + resumes into `ci-secrets/*.enc` and creates `.ci-passphrase` (git-ignored).
+2. Repo → Settings → Secrets and variables → Actions → **New repository secret**:
+   name `CI_SECRETS_PASSPHRASE`, value = contents of `.ci-passphrase`.
+3. Commit + push `ci-secrets/*.enc`, then Actions → *Naukri profile refresh* → **Run workflow** to test.
+
+When a run fails with `session expired` (or you change a resume), repeat step 1 and push — the passphrase stays the same.
+
 ## Troubleshooting
 
 | Symptom | Fix |

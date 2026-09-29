@@ -15,5 +15,10 @@ apply-state-*.json
 # resume / personal docs
 *.pdf
 
+# CI secrets: only the encrypted *.enc files are committed; plaintext + passphrase stay local
+.ci-passphrase
+ci-secrets/*
+!ci-secrets/*.enc
+
 # deps
 node_modules/
