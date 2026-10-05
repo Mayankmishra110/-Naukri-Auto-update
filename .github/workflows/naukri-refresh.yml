@@ -1,13 +1,13 @@
 name: Naukri profile refresh
 
-# Slots (IST): 08:00, 09:18, 14:00 — each run lands at a random time within ±15 min of its slot.
-# Crons fire 15 min before each slot (UTC = IST − 5:30); the jitter step then waits until slot + random offset,
-# measured from the real start time so GitHub's queue delay doesn't push it outside the window.
+# Fixed slots (IST): 08:00, 09:18, 14:00 — no intentional jitter.
+# Cron times are UTC (= IST − 5:30). Note: GitHub may still queue a scheduled
+# run a few minutes late under load; we no longer add our own random delay.
 on:
   schedule:
-    - cron: "15 2 * * *"   # 08:00 IST slot → window 07:45–08:15
-    - cron: "33 3 * * *"   # 09:18 IST slot → window 09:03–09:33
-    - cron: "15 8 * * *"   # 14:00 IST slot → window 13:45–14:15
+    - cron: "30 2 * * *"   # 08:00 IST
+    - cron: "48 3 * * *"   # 09:18 IST
+    - cron: "30 8 * * *"   # 14:00 IST
   workflow_dispatch:
 
 concurrency:
@@ -19,22 +19,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
-      - name: Random delay within ±15 min of the slot
-        if: github.event_name == 'schedule'
-        env:
-          SLOT_CRON: ${{ github.event.schedule }}
-        run: |
-          read -r m h _ <<< "$SLOT_CRON"
-          slot=$(( (10#$h * 60 + 10#$m + 15) * 60 ))
-          offset=$(( RANDOM % 1801 - 900 ))
-          now=$(( 10#$(date -u +%H) * 3600 + 10#$(date -u +%M) * 60 + 10#$(date -u +%S) ))
-          wait=$(( slot + offset - now ))
-          (( wait < 0 )) && wait=0
-          msg="Slot $(date -u -d @$(( slot + 19800 )) +%H:%M) IST, offset ${offset}s → update planned at $(date -u -d @$(( now + wait + 19800 )) +%H:%M:%S) IST (waiting ${wait}s)"
-          echo "$msg"
-          echo "$msg" >> "$GITHUB_STEP_SUMMARY"
-          sleep "$wait"
-
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4

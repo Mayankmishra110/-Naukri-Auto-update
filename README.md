@@ -3,7 +3,7 @@
 Keeps your Naukri profile "recently updated" — recruiters see fresh profiles first.
 Every run it toggles a trailing `.` on your **resume headline** and re-uploads your
 **resume**, alternating between two PDFs, both of which count as profile updates on
-Naukri. Run it in the cloud on GitHub Actions (3 jittered runs a day, laptop can be off),
+Naukri. Run it in the cloud on GitHub Actions (3 fixed runs a day, laptop can be off),
 or locally via Windows Task Scheduler.
 
 - Logs in automatically with your **Google account** (session is saved after the first login).
@@ -100,8 +100,8 @@ Unregister-ScheduledTask NaukriProfileRefresh     # remove
 ## Run it in the cloud (GitHub Actions — laptop can be off)
 
 `.github/workflows/naukri-refresh.yml` runs the refresh on GitHub's servers daily at
-**08:00, 09:18 and 14:00 IST**, each at a random moment within ±15 min of the slot so the
-update times never form an exact pattern. Free on public repos.
+**exactly 08:00, 09:18 and 14:00 IST** (no random delay). Free on public repos.
+GitHub's scheduler can still queue a run a few minutes late under load — that part is outside our control.
 
 The laptop's logged-in session and both resumes are shipped to CI **encrypted** in `ci-secrets/*.enc`
 (AES-256-GCM); only the passphrase lives in GitHub secrets.
@@ -126,10 +126,9 @@ Repo → **Actions** tab → **Naukri profile refresh**. Every run is one row:
 Click a run to see, at the top of the page (the **run summary**):
 
 ```
-Slot 08:00 IST, offset -412s → update planned at 07:53:08 IST (waiting 1504s)
-### Naukri refresh — success — 30 Sep 2026, 07:54 IST
-[30/9/2026, 7:53:21 am] OK: headline dot added (verified) → "SDE | React.js | ..."
-[30/9/2026, 7:54:07 am] OK: resume A uploaded (verified, ...) → "resume-a.pdf", profile shows "Uploaded on Sep 30, 2026"
+### Naukri refresh — success — 30 Sep 2026, 08:00 IST
+[30/9/2026, 8:00:21 am] OK: headline dot added (verified) → "SDE | React.js | ..."
+[30/9/2026, 8:01:07 am] OK: resume A uploaded (verified, ...) → "resume-a.pdf", profile shows "Uploaded on Sep 30, 2026"
 ```
 
 For step-by-step output, click the **refresh** job → expand any step (the *Refresh profile* step has the full script output).
@@ -174,7 +173,7 @@ and the passphrase exists only in `.ci-passphrase` (git-ignored, on the laptop) 
 | `.naukri-chrome-profile/` | Saved Chrome session (git-ignored) |
 | `.naukri-resume-state.json` | Tracks which resume was uploaded last (git-ignored) |
 | `run-hidden.vbs` | Launches the local scheduled run without a console window |
-| `.github/workflows/naukri-refresh.yml` | GitHub Actions schedule (08:00 / 09:18 / 14:00 IST ± 15 min) |
+| `.github/workflows/naukri-refresh.yml` | GitHub Actions schedule (08:00 / 09:18 / 14:00 IST exact) |
 | `ci/export-session.js` | `npm run export-session` — exports the laptop session + resumes, encrypted, for CI |
 | `ci/crypto.js` | AES-256-GCM encrypt/decrypt for `ci-secrets/` and failure screenshots |
 | `ci-secrets/*.enc` | Encrypted session + resumes used by CI (the only committed secrets — unreadable without the passphrase) |
